@@ -206,3 +206,18 @@ node "$env:PI_SCRATCH_DIR\jyeoo-review\word-issues.cjs"
 node "$env:PI_SCRATCH_DIR\jyeoo-review\word-issues-browser.cjs"
 python "$env:PI_SCRATCH_DIR\jyeoo-review\word-layout-check.py"
 ```
+
+## 11. v2.6.4 补丁：PDF 根号与分式错位
+
+- 同步修改 `jy-web-onekey.js` 和 `jy-web-onekey-2.6.4.js`，两个文件内容一致；仅调整打印媒体样式，Word 导出逻辑及 PDF 字号配置不变。
+- 根因复现：正文打印规则将 MathJye 外层行高强制设为 1.5，覆盖原生的零行高，并沿继承链影响内部节点。原生样式还为根号伸缩等节点设置不同的专用行高，不能对所有公式子节点统一设为 normal。
+- 正文与标题文字规则统一排除公式自身及后代（含 MathJye 类名变体）；仅单独设置顶层公式的打印字号，保留内部相对字号、行高及布局。
+- `node --check` 两个脚本均通过；`git diff --check` 通过；两个文件 SHA-256 相同：`4BFD2DF57B544BAEB81B46C1B53B13EEAA3E009A0A8D9F56E84189087EEF0F33`。第 1 节的哈希是本补丁前记录。
+- 使用本机 Chromium 150、站点 MathJye 渲染脚本及 CSS，在根式/分式/幂次复现页与嵌套公式、label、类名变体样例上验证：旧脚本复现 24.1936px 外层行高；两个修复脚本均恢复为 0px。94 个公式相关节点的字号、行高及相对坐标与同字号原生布局一致；屏幕公式布局、答案开关和打印面板隐藏检查通过，无未捕获页面异常。
+- 实际生成修复前后 PDF；按既有 0.744 校准倍率读取正文为 8.995pt、标题为 9.9994pt，无控制面板文字。已查看 PDF 渲染的第一题放大对比，确认根号贴合、分母不再与分数线重叠。
+- 本轮测试及 PDF/图片产物在当前会话 scratch 的 `pdf-math-tests` 中；早期 `jyeoo-review` 测试目录在本会话不可用，未声称重跑其历史测试。真实原试卷与原生打印对话框仍需用户刷新页面后复测。
+
+```powershell
+$chrome = Get-CimInstance Win32_Process -Filter "name = 'chrome.exe'" | Select-Object -First 1 -ExpandProperty ExecutablePath
+node "$env:PI_SCRATCH_DIR\pdf-math-tests\check.cjs" "$chrome"
+```

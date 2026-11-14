@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         菁优网一键提取试卷（净化页面 + Word/PDF导出）
 // @namespace    https://etshelper.ccwu.cc
-// @version      2.6.4
+// @version      2.6.5
 // @description  两阶段净化与 Word/PDF 导出；保留题目、段落与强调文字，题干填空留白，支持原生 Word 公式、等比例图片与资源就绪检查。
 // @author       https://etshelper.ccwu.cc
 // @license      MIT
@@ -808,14 +808,18 @@
                 }
 
                 /* 题干、选项与正文：最终 PDF 目标 9pt（含实测缩放补偿） */
-                fieldset, .fieldset, .QUES_LI, .rpt_b, li.QUES_LI,
+                :is(fieldset, .fieldset, .QUES_LI, .rpt_b, li.QUES_LI,
                 .ques-detail, .quesborder, .ques-item, .question-item, .ques-con,
                 .pt0, .pt1, .pt2, .pt3, .pt4, .pt5, .pt6, .pt7, .pt8, .pt9,
                 .q-item, .matblk, div[id^="q_"], div[id^="ques_"], li[id^="q_"], li[id^="ques_"],
-                p:not(.MathJye *), span:not(.MathJye *):not(sup *):not(sub *),
-                table:not(.MathJye *), td:not(.MathJye *), th:not(.MathJye *), label, .MathJye {
+                p, span:not(sup *):not(sub *), table, td, th, label):not(:is(${MATH_SELECTOR})):not(:is(${MATH_SELECTOR}) *) {
                     font-size: ${(PDF_TYPOGRAPHY.bodyPt / PDF_TYPOGRAPHY.measuredScale).toFixed(4)}pt !important;
                     line-height: 1.5 !important;
+                }
+                /* 公式只设置顶层字号；保留 MathJye 的零行高及内部节点各自的专用行高。
+                   不能对 .MathJye * 统一设置 normal，否则仍会破坏根号伸缩与分式定位。 */
+                :is(${MATH_SELECTOR}):not(:is(${MATH_SELECTOR}) *) {
+                    font-size: ${(PDF_TYPOGRAPHY.bodyPt / PDF_TYPOGRAPHY.measuredScale).toFixed(4)}pt !important;
                 }
 
                 /* 仅对单道具体试题做防截断保护 */
@@ -837,9 +841,9 @@
                 img {
                     max-width: 100% !important;
                 }
-                /* 标题及内部文字显式覆盖通用 span/p 字号；公式、上下标内部仍保留相对尺寸。 */
-                :is(h1, h2, h3, h4, h5, h6, .report-title-a, .h2-txt, .h2-txt-new, [class*="type-head"]):not(.MathJye *),
-                :is(h1, h2, h3, h4, h5, h6, .report-title-a, .h2-txt, .h2-txt-new, [class*="type-head"]) :is(p, span, label):not(.MathJye *):not(sup *):not(sub *) {
+                /* 标题及内部文字显式覆盖通用 span/p 字号；不覆盖公式及其内部相对尺寸。 */
+                :is(h1, h2, h3, h4, h5, h6, .report-title-a, .h2-txt, .h2-txt-new, [class*="type-head"]):not(:is(${MATH_SELECTOR})):not(:is(${MATH_SELECTOR}) *),
+                :is(h1, h2, h3, h4, h5, h6, .report-title-a, .h2-txt, .h2-txt-new, [class*="type-head"]) :is(p, span, label):not(:is(${MATH_SELECTOR})):not(:is(${MATH_SELECTOR}) *):not(sup *):not(sub *) {
                     font-size: ${(PDF_TYPOGRAPHY.titlePt / PDF_TYPOGRAPHY.measuredScale).toFixed(4)}pt !important;
                 }
                 [data-jyeoo-long="true"] { break-inside: auto !important; page-break-inside: auto !important; }
